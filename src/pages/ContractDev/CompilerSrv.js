@@ -1,4 +1,6 @@
 import { Message } from '@alifd/next';
+import Wrapper from './solc/wrapper.js';
+
 const compileSrvAddr = "http://52.194.255.222:8888";
 let userFileAddr = compileSrvAddr + "/solidity/";
 let libFileAddr = compileSrvAddr + "/libsList/";
@@ -105,8 +107,12 @@ export function renameSol(accountName, solFileName, newSolFileName) {
         });
 }
 
-export async function initCompiler() {
- solc = require('solc');
+export async function initCompiler() {  
+  let script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src = '/public/soljson.js';
+  document.body.appendChild(script);
+  solc = Wrapper(window.Module);
 }
 
 export async function loadCompiler(compilerVersion) {

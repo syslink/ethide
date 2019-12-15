@@ -308,7 +308,7 @@ export default class ContractManager extends Component {
       this.state.networks = this.state.networksWithoutMetaMask;
     }
 
-    //CompilerSrv.initCompiler();
+    CompilerSrv.initCompiler();
   }
 
   componentDidMount = async () => {
@@ -325,22 +325,9 @@ export default class ContractManager extends Component {
     for(var fileName in sampleFiles) {
       this.state.smapleFileList.push(fileName);
       global.localStorage.setItem('sol:' + fileName, sampleFiles[fileName]);
-    }
-    
-    this.loadSolJsonJs();
+    }  
 
     this.setState({libFileList: this.state.libFileList, smapleFileList: this.state.smapleFileList});
-  }
-
-  loadSolJsonJs = () => {
-    let script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = '/public/soljson.js';
-    document.body.appendChild(script);
-
-    // var wrapper = require('solc/wrapper');
-    // var solc = wrapper(window.Module);
-    // console.log(solc);
   }
 
   handleContractAccountChange = (value) => {

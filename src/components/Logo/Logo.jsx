@@ -6,7 +6,7 @@ export default class Logo extends PureComponent {
   constructor(props) {
     super(props);
     this.state = {
-      networkType: '测试网',
+      networkType: '以太坊',
     };
   }
   componentDidMount = () => {

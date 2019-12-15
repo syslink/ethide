@@ -1,7 +1,10 @@
+import { Message } from '@alifd/next';
 const compileSrvAddr = "http://52.194.255.222:8888";
 let userFileAddr = compileSrvAddr + "/solidity/";
 let libFileAddr = compileSrvAddr + "/libsList/";
 let sampleFileAddr = compileSrvAddr + "/sampleCodeList/";
+
+var solc = null;
 
 const  OpSolType = {
 	AddSol: 0,
@@ -102,18 +105,24 @@ export function renameSol(accountName, solFileName, newSolFileName) {
         });
 }
 
-export async function compileSol(accountAddress, solFileName) {
-  const dataToSrv = JSON.stringify({ type: OpSolType.CompileSol,
-    accountName: accountAddress,
-    sharedAccountName: '',
-    solFileName: solFileName,
-    newSolFileName: "",
-    solFileContent: ""});
-  let resp = await fetch(userFileAddr, 
-      {headers: { "Content-Type": "application/json" }, method: 'POST', body: dataToSrv});
-  resp = await resp.json();
-  console.log(resp);
-  return resp;
+export async function initCompiler() {
+ //solc = require('solc');
+}
+
+export async function loadCompiler(compilerVersion) {
+  solc.loadRemoteVersion(compilerVersion, (err, newVerSolc) => {
+    if (err) {
+      Message.error('编译器加载失败:' + err);
+      return;
+    }
+    solc = newVerSolc;
+  })
+}
+
+export async function compileSol(solFileInfo, findImports) {
+  //solc = require('solc');
+  const output = solc.compile(solFileInfo, 1, findImports);
+  return output;
 }
 
 export async function listSharedSol(accountName, sharedAccountName) {

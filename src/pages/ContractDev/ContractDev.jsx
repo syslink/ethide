@@ -1,12 +1,13 @@
 import React, { Component } from 'react';
 import { Select } from '@icedesign/base';
-import { Button, Tab, Grid, Tree, Dialog, Collapse, Message, Input, Card } from '@alifd/next';
+import { Button, Tab, Grid, Tree, Dialog, Collapse, Message, Input, Card, Checkbox } from '@alifd/next';
 import * as hyperchain from 'hyperchain-web3';
 import {AbiCoder as EthersAbiCoder} from 'ethers/utils/abi-coder';
 import cookie from 'react-cookies';
 import copy from 'copy-to-clipboard';
 import ReactJson from 'react-json-view';
 import IceEllipsis from '@icedesign/ellipsis';
+import Web3 from 'web3';
 
 import * as utils from '../../utils/utils';
 import * as Keystore from '../../utils/keystore';
@@ -168,12 +169,20 @@ export default class ContractManager extends Component {
 
     this.state = {
       password: '',
-      accountReg: new RegExp('^([a-z][a-z0-9]{6,15})(?:\.([a-z0-9]{2,16})){0,1}(?:\.([a-z0-9]{2,16})){0,1}$'),
-      addresses: [],
+      httpReg: new RegExp('^(?=^.{3,255}$)(http(s)?:\/\/)?(www\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\d+)*(\/\w+\.\w+)*$'),
+      networks:[{label: '通过MetaMask连接以太坊', value: 2}, {label: '本地节点', value: 3}, {label: '自定义节点', value: 4}],
+      //networks:[{label: '测试网节点', value: 0}, {label: '主网节点', value: 1}, {label: 'MetaMask通道', value: 2}, {label: '本地节点', value: 3}, {label: '自定义节点', value: 4}],
+      networksWithoutMetaMask :[{label: '测试网节点', value: 0}, {label: '主网节点', value: 1}, {label: '本地节点', value: 3}, {label: '自定义节点', value: 4}],
+      currentProvider: '',
+      networkName: '',
+      web3: null,
+      unMateMaskAddresses: [],
+      addresses: [],      
       contractFuncInfo: [],
       abiInfos: [],
       contractAccountInfo: [],
       accountsOfShareCode: ['0x4d93a58912ba194cfe0135f33c58097bc5893068'],
+      addBtnEnable: true,
       abiInfo: abiInfoStr,
       paraValue: {},
       funcParaTypes: {},
@@ -204,9 +213,10 @@ export default class ContractManager extends Component {
       contractList: [],
       contractAccountAbiMap: {},
       activeKey: '',
+      compilerVersionSettingVisible: false,
+      nodeAddrSettingVisible: false,
       addNewContractFileVisible: false,
       deployContractVisible: false,
-      compileSrvSettingVisible: false,
       contractInfoVisible: false,
       displayAbiVisible: false,
       displayBinVisible: false,
@@ -227,8 +237,11 @@ export default class ContractManager extends Component {
       constructorParaNames: [],
       constructorParaTypes: [],
       ethersAbiCoder: new EthersAbiCoder(),
+      allCompilerVersionList: [],
+      commitCompilerVersionList: [],
+      compilerVersionList: [],
      };
-     
+    
     const keystoreList = utils.loadKeystoreFromLS();    
     if (keystoreList.length == 0) {
       for (let i = 0; i < 5; i++) {
@@ -239,8 +252,9 @@ export default class ContractManager extends Component {
     }
     for (const keystore of keystoreList) {
       this.state.keystoreInfo[keystore.address] = keystore;
-      this.state.addresses.push({label: keystore.address, value: keystore.address});
+      this.state.unMateMaskAddresses.push({label: keystore.address, value: keystore.address});
     }
+    this.state.addresses = this.state.unMateMaskAddresses;
     this.state.selectedAccountAddress = this.state.addresses.length > 0 ? this.state.addresses[0].value : '';
 
     const solFileList = global.localStorage.getItem('solFileList');
@@ -266,6 +280,35 @@ export default class ContractManager extends Component {
     if (fileContractMap != null) {
       this.state.fileContractMap = JSON.parse(fileContractMap);
     }
+
+    let networkInfo = global.localStorage.getItem('networkInfo');
+    if (networkInfo != null) {
+      networkInfo = JSON.parse(networkInfo);
+      this.state.selectedNetwork = networkInfo.selectedNetwork;
+      this.state.networkName = networkInfo.networkName;
+    }
+
+    fetch('https://solc-bin.ethereum.org/bin/list.json', {})
+      .then(resp => {
+              resp.json().then(response => {
+                const compilerVersion = global.localStorage.getItem('compilerVersion');
+                this.state.compilerVersion = compilerVersion ? compilerVersion : response.latestRelease;
+
+                response.builds.map(buildInfo => {
+                  this.state.allCompilerVersionList = [buildInfo.longVersion, ...this.state.allCompilerVersionList];
+                  if (buildInfo.longVersion.indexOf('nightly') < 0) {
+                    this.state.commitCompilerVersionList = [buildInfo.longVersion, ...this.state.commitCompilerVersionList];
+                    this.state.compilerVersionList = [buildInfo.longVersion, ...this.state.compilerVersionList];
+                  }
+                });
+              });
+            });
+          
+    if (!window.ethereum && !window.web3) { //用来判断你是否安装了metamask
+      this.state.networks = this.state.networksWithoutMetaMask;
+    }
+
+    //CompilerSrv.initCompiler();
   }
 
   componentDidMount = async () => {
@@ -283,8 +326,21 @@ export default class ContractManager extends Component {
       this.state.smapleFileList.push(fileName);
       global.localStorage.setItem('sol:' + fileName, sampleFiles[fileName]);
     }
+    
+    this.loadSolJsonJs();
 
     this.setState({libFileList: this.state.libFileList, smapleFileList: this.state.smapleFileList});
+  }
+
+  loadSolJsonJs = () => {
+    let script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = '/public/soljson.js';
+    document.body.appendChild(script);
+
+    // var wrapper = require('solc/wrapper');
+    // var solc = wrapper(window.Module);
+    // console.log(solc);
   }
 
   handleContractAccountChange = (value) => {
@@ -313,10 +369,79 @@ export default class ContractManager extends Component {
     this.state.paraValue[contractAddress + '-' + funcName + '-' + paraName] = value;
   }
 
+  onChangeNetwork = async (network) => {
+    this.state.addresses = this.state.unMateMaskAddresses;
+    var web3Provider = null;
+    var addBtnEnable = true;
+    let networkName = '';
+    switch(network) {
+      case 0:  // 测试网
+        web3Provider = 'https://ropsten.infura.io/v3/e878131f944440759914c7423b17740c';
+        break;
+      case 1:  // 主网
+        web3Provider = 'https://mainnet.infura.io/v3/e878131f944440759914c7423b17740c';
+        web3Provider = '';
+        break;
+      case 2:  // 选择metamask，需要导入metamask当前连接的网络和地址列表，当MetaMask切换网络时，也需要同步更新
+        var web3 = this.state.web3;
+        if (window.ethereum) {
+          try {
+            // 请求用户授权
+            await window.ethereum.enable();
+          } catch (error) {
+            // 用户不授权时
+            Message.error("授权失败，无法使用MetaMask服务");
+            return;
+          }        
+          web3Provider = window.ethereum;
+        } else if (window.web3) {
+          web3Provider = window.web3;
+        }      
+        addBtnEnable = false;
+        break;
+      case 3:  // local node
+        web3Provider = 'http://127.0.0.1:8545';
+        networkName = web3Provider;
+        break;
+      case 4:  // other node
+        this.setState({nodeAddrSettingVisible: true});
+        return;
+    }
+    
+    if (web3Provider != null && (web3 == null || this.state.currentProvider != web3Provider)) {
+      web3 = new Web3(web3Provider);
+      this.state.web3 = web3;
+    }
+    const provider = await web3.currentProvider;
+    if (provider) {
+      const id = provider.networkVersion;
+      if (id === '1') networkName = '主网(PoW共识)'
+      else if (id === '2') networkName = 'Morden (deprecated)'
+      else if (id === '3') networkName = 'Ropsten测试网(PoW共识)'
+      else if (id === '4') networkName = 'Rinkeby测试网(PoA共识)'
+      else if (id === '5') networkName = 'Goerli测试网'
+      else if (id === '42') networkName = 'Kovan测试网';
+    }
+
+    web3.eth.getAccounts((error, accounts) => {
+      if (!error) {
+        this.setState({addresses: accounts});
+      }
+    });
+    const networkInfoObj = {selectedNetwork: network, networkName};
+    global.localStorage.setItem('networkInfo', JSON.stringify(networkInfoObj));
+    this.setState({addBtnEnable, currentProvider: web3Provider, networkName, selectedNetwork: network});
+  }
+
   onChangeAddress = (accountAddress, item) => {
     this.state.selectedAccountAddress = accountAddress;
     this.setState({ selectedAccountAddress: accountAddress });
     this.syncSolFileToSrv();
+    this.state.web3.eth.getBalance(accountAddress).then(result => {
+      if (result == 0) {
+        Message.notice('当前账户余额为0，无法发起交易');
+      }
+    })
   }
 
   
@@ -404,6 +529,29 @@ export default class ContractManager extends Component {
     Message.success(T('地址添加成功'));
   }
 
+  findImports = (path) => {
+    for (const solFile of this.state.solFileList) {
+      if (solFile == path) {
+        const solCode = global.localStorage.getItem('sol:' + solFile);
+        if (solCode != null) {
+          return {constents: solCode};
+        } 
+        return {error: 'File not found'};
+      }
+     }
+
+     for (const solFile of this.state.libFileList) {
+      if ('/Lib/' + solFile == path) {
+        const solCode = global.localStorage.getItem('sol:' + solFile);
+        if (solCode != null) {
+          return {constents: solCode};
+        } 
+        return {error: 'File not found'};
+      }
+     }
+     return {error: 'File not found'};
+  }
+
   compileContract = async () => {
     if (utils.isEmptyObj(this.state.selectedFileToCompile)) {
       Message.error(T('请选择待编译的文件'));
@@ -412,7 +560,9 @@ export default class ContractManager extends Component {
     Message.success('开始编译');
     this.addLog("开始编译");
     try {
-      const compileResult = await CompilerSrv.compileSol(this.state.selectedAccountAddress, this.state.selectedFileToCompile);
+      const input = {}
+      input[this.state.selectedFileToCompile] = global.localStorage.getItem('sol:' + this.state.selectedFileToCompile);
+      const compileResult = await CompilerSrv.compileSol({sources: input}, findImports);
       if (compileResult.result == false) {
         Message.error("编译失败,错误信息:" + compileResult.err);
         this.addLog("编译失败,错误信息:" + compileResult.err);
@@ -454,8 +604,8 @@ export default class ContractManager extends Component {
     }
   }
 
-  setCompileSrv = () => {
-    this.setState({compileSrvSettingVisible: true});
+  setCompilerVersion = () => {
+    this.setState({compilerVersionSettingVisible: true});
   }
 
   getContractABI = (contractInfos) => {
@@ -843,17 +993,44 @@ export default class ContractManager extends Component {
     this.state.compileSrv = v;
   }
 
-  onSetCompileSrvOK = () => {
-    if (utils.isEmptyObj(this.state.compileSrv)) {
-      Message.error('请输入编译服务器地址');
+  onSetNodeAddrOK = () => {
+    if (this.state.nodeAddr == null) {
+      Message.error('请输入自定义节点地址');
       return;
     }
-    Message.success('编译服务器地址修改成功');
-    global.localStorage.setItem('compileSrv', this.state.compileSrv);
-    this.setState({compileSrvSettingVisible: false});
+    if (!this.state.httpReg.test(this.state.nodeAddr)) {
+      Feedback.toast.error(T('节点地址信息错误'));
+      return;
+    }
+    this.state.web3 = new Web3(this.state.nodeAddr);
+
+    const networkName = this.state.nodeAddr;
+    const networkInfoObj = {selectedNetwork: 4, networkName};
+    global.localStorage.setItem('networkInfo', JSON.stringify(networkInfoObj));
+    this.setState({addBtnEnable: true, currentProvider: networkName, networkName, nodeAddrSettingVisible: false, selectedNetwork: 4});
   }
 
-  onSetCompileSrvClose = () => {
+  onSetNodeAddrClose = () => {
+    this.setState({nodeAddrSettingVisible: false, selectedNetwork: this.state.selectedNetwork});
+  }
+
+  handleNodeAddrChange = (v) => {
+    this.state.nodeAddr = (v.indexOf('http://') == 0 || v.indexOf('https://') == 0)? v : 'http://' + v;
+  }
+  onChangeCompilerVersion = (v) => {
+    this.state.compilerVersion = v;
+  }
+  onSetCompilerVersionOK = () => {
+    if (utils.isEmptyObj(this.state.compilerVersion)) {
+      Message.error('请选择Solidity编译器版本');
+      return;
+    }
+    global.localStorage.setItem('compilerVersion', this.state.compilerVersion);
+    this.setState({compilerVersionSettingVisible: false});
+    CompilerSrv.loadCompiler(this.state.compilerVersion);
+  }
+
+  onSetCompilerVersionClose = () => {
     this.setState({compileSrvSettingVisible: false});
   }  
 
@@ -1171,21 +1348,31 @@ export default class ContractManager extends Component {
               <ContractCollapse self={self} contractAccountInfo={this.state.contractAccountInfo}/>
             </Col>
             <Col fixedSpan="15" className="custom-col-right-sidebar">
-              <Row style={{width: '100%', color: '#fff'}} justify="space-between">
-                地址:
+              <Row style={{width: '100%'}}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder={T("选择接入网络")}
+                  value={this.state.selectedNetwork}
+                  onChange={this.onChangeNetwork.bind(this)}
+                  dataSource={this.state.networks}
+                />
               </Row>
+              <Row style={{width: '100%', color: '#fff'}}>
+                {this.state.networkName ? 'Network: ' + this.state.networkName : ''}
+              </Row>
+              <br/>
               <Row style={{width: '100%'}}>
                 <Select
                   style={{ width: 170 }}
                   placeholder={T("选择发起合约操作的账户")}
                   onChange={this.onChangeAddress.bind(this)}
-                  defaultValue={this.state.addresses.length > 0 ? this.state.addresses[0].label : ''}
+                  //defaultValue={this.state.addresses.length > 0 ? this.state.addresses[0].label : ''}
                   dataSource={this.state.addresses}
                 />
                 &nbsp;&nbsp;&nbsp;
                 <Button type="primary" onClick={this.copyAddress.bind(this)}>{T("复制")}</Button>
                 &nbsp;&nbsp;&nbsp;
-                <Button type="primary" onClick={this.addAddress.bind(this)}>{T("添加")}</Button>
+                <Button type="primary" disabled={!this.state.addBtnEnable} onClick={this.addAddress.bind(this)}>{T("添加")}</Button>
               </Row>
               <br/>
               <Row style={{width: '100%'}}>
@@ -1199,8 +1386,13 @@ export default class ContractManager extends Component {
                 &nbsp;&nbsp;&nbsp;
                 <Button type="primary" onClick={this.compileContract.bind(this)}>{T("编译")}</Button>
                 &nbsp;&nbsp;&nbsp;
-                <Button type="primary" onClick={this.setCompileSrv.bind(this)}>{T("配置")}</Button>
+                <Button type="primary" onClick={this.setCompilerVersion.bind(this)}>{T("配置")}</Button>
               </Row>
+              
+              <Row style={{width: '100%', color: '#fff'}}>
+                {this.state.compilerVersion ? '编译器版本:' + this.state.compilerVersion : ''}
+              </Row>
+              
               <br/><br/>
               <Row style={{width:'100%'}}>
                 <Select
@@ -1265,28 +1457,43 @@ export default class ContractManager extends Component {
         </Dialog>
         
         <Dialog closeable='close,esc,mask'
-          visible={this.state.compileSrvSettingVisible}
-          title={T("请输入编译服务器地址")}
+          visible={this.state.compilerVersionSettingVisible}
+          title={T("请选择Solidity编译器版本")}
           closeable="true"
           footerAlign="center"
-          onOk={this.onSetCompileSrvOK.bind(this)}
-          onCancel={this.onSetCompileSrvClose.bind(this)}
-          onClose={this.onSetCompileSrvClose.bind(this)}
+          onOk={this.onSetCompilerVersionOK.bind(this)}
+          onCancel={this.onSetCompilerVersionClose.bind(this)}
+          onClose={this.onSetCompilerVersionClose.bind(this)}
+        >
+          <Select showSearch placeholder="编译器版本"
+            style={{ width: 350 }}
+            onChange={this.onChangeCompilerVersion.bind(this)}
+            dataSource={this.state.compilerVersionList}
+          />
+          <br/>
+          <Checkbox onChange={checked => {
+            this.setState({compilerVersionList: checked ? this.state.allCompilerVersionList : this.state.commitCompilerVersionList})}}>
+            Include nightly builds
+          </Checkbox>
+        </Dialog>
+        
+        <Dialog closeable='close,esc,mask'
+          visible={this.state.nodeAddrSettingVisible}
+          title={T("请输入自定义节点地址")}
+          closeable="true"
+          footerAlign="center"
+          onOk={this.onSetNodeAddrOK.bind(this)}
+          onCancel={this.onSetNodeAddrClose.bind(this)}
+          onClose={this.onSetNodeAddrClose.bind(this)}
         >
           <Input hasClear
-            onChange={this.handleCompileSrvChange.bind(this)}
+            onChange={this.handleNodeAddrChange.bind(this)}
             style={{ width: 350 }}
-            addonTextBefore={T("编译服务器地址")}
+            addonTextBefore={T("节点地址")}
             size="medium"
           />
-          <br />
-          {
-            !utils.isEmptyObj(this.state.compileSrv) && this.state.compileSrv != 'http://52.194.255.222:8081'  
-              ? '当前服务器地址:' + this.state.compileSrv : ''
-          }
-          <br />
-          默认服务器地址:http://52.194.255.222:8081
         </Dialog>
+
         <Dialog closeable='close,esc,mask'
           visible={this.state.contractInfoVisible}
           title={T("本地添加合约ABI信息")}

@@ -21,9 +21,6 @@ import BasicTable from './pages/BasicTable';
 import TableDisplay from './pages/TableDisplay';
 
 import Performance from './pages/Performance';
-import AccountManager from './pages/AccountManager';
-import KeystoreManager from './pages/KeystoreManager';
-import ContractManager from './pages/ContractManager';
 import ContractDev from './pages/ContractDev';
 
 import Configure from './pages/Configure';
@@ -31,7 +28,6 @@ import NotFound from './pages/NotFound';
 
 import Block from './pages/Block';
 import Transaction from './pages/Transaction';
-import ProducerList from './pages/ProducerList';
 import Study from './pages/Study';
 import Dapp from './pages/Dapp';
 
@@ -118,16 +114,6 @@ const routerConfig = [
     component: Configure,
   },
   {
-    path: '/AccountManager',
-    layout: BasicLayout,
-    component: AccountManager,
-  },
-  {
-    path: '/KeystoreManager',
-    layout: BasicLayout,
-    component: KeystoreManager,
-  },
-  {
     path: '/Block',
     layout: BasicLayout,
     component: Block,
@@ -138,19 +124,9 @@ const routerConfig = [
     component: Transaction,
   },
   {
-    path: '/contractManager',
-    layout: BasicLayout,
-    component: ContractManager,
-  },
-  {
     path: '/contractDev',
     layout: BasicLayout,
     component: ContractDev,
-  },
-  {
-    path: '/producerList',
-    layout: BasicLayout,
-    component: ProducerList,
   },
   {
     path: '/study',

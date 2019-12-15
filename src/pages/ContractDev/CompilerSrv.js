@@ -106,7 +106,7 @@ export function renameSol(accountName, solFileName, newSolFileName) {
 }
 
 export async function initCompiler() {
- //solc = require('solc');
+ solc = require('solc');
 }
 
 export async function loadCompiler(compilerVersion) {

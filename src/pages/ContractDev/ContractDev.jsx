@@ -1468,7 +1468,7 @@ export default class ContractManager extends Component {
                   style={{ width: 170 }}
                   placeholder={T("选择发起合约操作的账户")}
                   onChange={this.onChangeAddress.bind(this)}
-                  //defaultValue={this.state.addresses.length > 0 ? this.state.addresses[0].label : ''}
+                  defaultValue={this.state.addresses.length > 0 ? this.state.addresses[0] : ''}
                   dataSource={this.state.addresses}
                 />
                 &nbsp;&nbsp;&nbsp;

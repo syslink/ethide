@@ -341,21 +341,21 @@ function removeDataFromFile(fileName) {
   global.localStorage.setItem(fileName, JSON.stringify(dataObj));
 }
 
-function storeContractABI(contractAccountName, abiInfo) {
+function storeContractABI(contractAddress, abiInfo) {
   let storedABI = getDataFromFile(Constant.ContractABIFile);
   if (storedABI != null) {
-    storedABI[contractAccountName] = abiInfo;
+    storedABI[contractAddress] = abiInfo;
   } else {
     storedABI = {};
-    storedABI[contractAccountName] = abiInfo;
+    storedABI[contractAddress] = abiInfo;
   }
   storeDataToFile(Constant.ContractABIFile, storedABI);
 }
 
-function getContractABI(contractAccountName) {
+function getContractABI(contractAddress) {
   let storedABI = getDataFromFile(Constant.ContractABIFile);
   if (storedABI != null) {
-    return storedABI[contractAccountName];
+    return storedABI[contractAddress];
   }
   return null;
 }

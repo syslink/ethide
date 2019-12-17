@@ -25,7 +25,6 @@
     "classnames": "^2.2.5",
     "clone-stats": "^1.0.0",
     "copy-to-clipboard": "^3.0.8",
-    "core-js": "^3.5.0",
     "enquire-js": "^0.1.2",
     "eth-crypto": "^1.3.2",
     "ethereumjs-abi": "^0.6.8",
@@ -76,20 +75,22 @@
     "eslint-plugin-import": "^2.8.0",
     "eslint-plugin-jsx-a11y": "^6.0.3",
     "eslint-plugin-react": "^7.5.1",
-    "ice-scripts": "^2.0.0",
-    "moment": "^2.22.2",
-    "ice-plugin-css-assets-local": "^0.1.0",
-    "ice-plugin-fusion": "^0.1.4",
-    "ice-plugin-moment-locales": "^0.1.0"
+    "ice-scripts": "^1.8.11",
+    "moment": "^2.22.2"
   },
   "scripts": {
-    "start": "ice-scripts dev",
-    "build": "ice-scripts build",
+    "start": "ice dev",
+    "build": "ice build",
     "lint": "eslint . --ext '.js,.jsx' --fix"
   },
   "publishConfig": {
     "registry": "http://registry.npmjs.com",
     "access": "public"
+  },
+  "buildConfig": {
+    "theme": "@icedesign/skin",
+    "entry": "src/index.js",
+    "localization": true
   },
   "scaffoldConfig": {
     "name": "ethereum-blockchain",
@@ -106,5 +107,6 @@
   "plugins": [
     "react-v-html"
   ],
-  "title": "Ethereum"
+  "title": "Ethereum",
+  "proxyConfig": {}
 }

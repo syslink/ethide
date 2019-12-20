@@ -1,7 +1,7 @@
 /* eslint-disable react/no-string-refs */
 import React, { Component } from 'react';
 
-import { Button } from '@alifd/next';
+import { Button, Message } from '@alifd/next';
 import * as monaco from 'monaco-editor';
 import 'monaco-editor/esm/vs/basic-languages/solidity/solidity.contribution.js';
 import 'monaco-editor/esm/vs/editor/contrib/find/findController.js';
@@ -31,11 +31,16 @@ export default class ContractEditor extends Component {
       readOnly: false,
       theme: 'vs-dark',
     });
+    const self = this;
     this.state.editor.onDidBlurEditorWidget(() => {
       const latestCode = this.state.editor.getValue();
       global.localStorage.setItem('sol:' + this.state.fileName, latestCode);
       CompilerSrv.updateSol(this.state.accountName, this.state.fileName, latestCode);
     });
+    this.state.editor.onDidChangeModelContent((changedEvent) => {          
+      const latestCode = this.state.editor.getValue();
+      console.log(latestCode);
+    })
   }
   componentWillUnmount() {
     this.state.editor.dispose();

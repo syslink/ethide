@@ -1051,6 +1051,18 @@ export default class ContractManager extends Component {
   addSolFile = () => {
     this.setState({addNewContractFileVisible: true});
   }
+  saveSolFile = () => {
+    if (this.state.selectContactFile.length > 0) {
+      const index = this.state.solFileList.indexOf(this.state.selectContactFile);
+      if (index > -1) {
+        const fileName = this.state.selectContactFile;
+        const fileContent = global.localStorage.getItem('sol:' + fileName);
+        utils.doSave(fileContent, 'text/latex', fileName);
+      }
+    } else {
+      Message.error('请先选中需保存到本地的合约文件');
+    }
+  }
   handleContractNameChange = (value) => {
     this.state.newContractFileName = value;
   }
@@ -1372,7 +1384,9 @@ export default class ContractManager extends Component {
               &nbsp;&nbsp;
               <Button type="primary" onClick={this.delSolFile}>删除选中合约</Button>
               <br /><br />
-              <Button type="primary" onClick={this.shareCode.bind(this)}>{T("分享我的合约")}</Button>
+              <Button type="primary" onClick={this.saveSolFile}>保存合约</Button>
+              &nbsp;&nbsp;
+              <Button type="primary" onClick={this.shareCode.bind(this)}>{T("直播写代码")}</Button>
               <Tree editable showLine draggable selectable
                   defaultExpandedKeys={['0', '1', '2']}
                   onEditFinish={this.onEditFinish.bind(this)}

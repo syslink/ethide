@@ -538,9 +538,11 @@ function parseResult(outputs, bytes) {
     returnValues[outputs[0].name] = result;
   }
 
-  //returnValues[0] = result;
-
   return returnValues;
+}
+
+function isObject(val) {
+  return val != null && typeof val === 'object' && Array.isArray(val) === false;
 }
 
 function checkPrefix(origin) {
@@ -551,9 +553,39 @@ function isEqualAddress(addressOne, addressTwo) {
   return checkPrefix(addressOne.toLowerCase()) == checkPrefix(addressTwo.toLowerCase());
 }
 
+function doSave(value, type, name) {
+  var blob;
+  if (typeof window.Blob == "function") {
+      blob = new Blob([value], {type: type});
+  } else {
+      var BlobBuilder = window.BlobBuilder || window.MozBlobBuilder || window.WebKitBlobBuilder || window.MSBlobBuilder;
+      var bb = new BlobBuilder();
+      bb.append(value);
+      blob = bb.getBlob(type);
+  }
+  var URL = window.URL || window.webkitURL;
+  var bloburl = URL.createObjectURL(blob);
+  var anchor = document.createElement("a");
+  if ('download' in anchor) {
+      anchor.style.visibility = "hidden";
+      anchor.href = bloburl;
+      anchor.download = name;
+      document.body.appendChild(anchor);
+      var evt = document.createEvent("MouseEvents");
+      evt.initEvent("click", true, true);
+      anchor.dispatchEvent(evt);
+      document.body.removeChild(anchor);
+  } else if (navigator.msSaveBlob) {
+      navigator.msSaveBlob(blob, name);
+  } else {
+      location.href = bloburl;
+  }
+}
+
 export { getFlatMenuData, getRouterData, formatterMenuData, hex2Bytes, bytes2Hex, str2Bytes, str2Hex,
          saveTxHash, saveTxBothFromAndTo, bytes2Number, deepClone, parsePrivateKey, checkPassword, 
          isEmptyObj, getPublicKeyWithPrefix, utf8ByteToUnicodeStr, getDataFromFile, storeDataToFile, 
          removeDataFromFile, loadKeystoreFromLS, loadAccountsFromLS, getReadableNumber, confuseInfo, 
          getGasEarned, getValidTime, checkIpVaild, getDuration, guid, getRandomInt,
-         getValidKeystores, storeContractABI, getContractABI, parseResult, checkPrefix, isEqualAddress };
+         getValidKeystores, storeContractABI, getContractABI, parseResult, checkPrefix, isEqualAddress,
+         doSave };

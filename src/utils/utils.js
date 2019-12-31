@@ -521,8 +521,6 @@ function parseResult(outputs, bytes) {
           decodedValue = null;
         }
 
-        //returnValues[i] = decodedValue;
-
         if (isObject(output) && output.name) {
           returnValues[output.name] = decodedValue;
         }

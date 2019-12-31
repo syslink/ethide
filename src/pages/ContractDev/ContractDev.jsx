@@ -82,8 +82,10 @@ const Transfer = ({self, contractAddress, funcName}) => {
 
 const OneFunc = ({self, contractAddress, funcName, parameterTypes, parameterNames}) => {
   let callBtnName = T('查询结果');
+  let callInvoke = true;
   if (!self.state.funcParaConstant[contractAddress][funcName]) {
     callBtnName = T('发起合约交易');
+    callInvoke = false;
     const transferTogether = self.state.transferTogether[contractAddress + funcName];
     self.state.visibilityValue[contractAddress + funcName] = (transferTogether != null && transferTogether) ? 'block' : 'none';
   }
@@ -97,9 +99,14 @@ const OneFunc = ({self, contractAddress, funcName, parameterTypes, parameterName
           <Button type="primary" onClick={self.callContractFunc.bind(self, contractAddress, funcName)}>{callBtnName}</Button>
           <br />
           <br />
-          <Input.TextArea autoHeight readOnly style={{ width: 600 }} 
-            value={self.state.result[contractAddress + funcName]}
-            addonTextBefore={T('结果')} size="medium"/>
+          {
+            callInvoke ? <ReactJson key='callResult' src={utils.isEmptyObj(self.state.result[contractAddress + funcName]) ? 
+                                                            {} : JSON.parse(self.state.result[contractAddress + funcName])}/>
+                         :
+                        <Input.TextArea autoHeight readOnly style={{ width: 600 }} 
+                                    value={self.state.result[contractAddress + funcName]}
+                                    addonTextBefore={T('结果')} size="medium"/>
+          }
           <br />
           <br />
           {
@@ -329,21 +336,21 @@ export default class ContractManager extends Component {
       }
     }
 
-    fetch('https://solc-bin.ethereum.org/bin/list.json', {})
-      .then(resp => {
-              resp.json().then(response => {
-                const compilerVersion = global.localStorage.getItem('compilerVersion');
-                this.state.compilerVersion = compilerVersion ? compilerVersion : response.latestRelease;
+    // fetch('https://solc-bin.ethereum.org/bin/list.json', {})
+    //   .then(resp => {
+    //           resp.json().then(response => {
+    //             const compilerVersion = global.localStorage.getItem('compilerVersion');
+    //             this.state.compilerVersion = compilerVersion ? compilerVersion : response.latestRelease;
 
-                response.builds.map(buildInfo => {
-                  this.state.allCompilerVersionList = [buildInfo.longVersion, ...this.state.allCompilerVersionList];
-                  if (buildInfo.longVersion.indexOf('nightly') < 0) {
-                    this.state.commitCompilerVersionList = [buildInfo.longVersion, ...this.state.commitCompilerVersionList];
-                    this.state.compilerVersionList = [buildInfo.longVersion, ...this.state.compilerVersionList];
-                  }
-                });
-              });
-            });
+    //             response.builds.map(buildInfo => {
+    //               this.state.allCompilerVersionList = [buildInfo.longVersion, ...this.state.allCompilerVersionList];
+    //               if (buildInfo.longVersion.indexOf('nightly') < 0) {
+    //                 this.state.commitCompilerVersionList = [buildInfo.longVersion, ...this.state.commitCompilerVersionList];
+    //                 this.state.compilerVersionList = [buildInfo.longVersion, ...this.state.compilerVersionList];
+    //               }
+    //             });
+    //           });
+    //         });
           
     if (!window.ethereum && !window.web3) { //用来判断你是否安装了metamask
       this.state.networks = this.state.networksWithoutMetaMask;
@@ -881,7 +888,7 @@ export default class ContractManager extends Component {
     const simulate = this.state.funcParaConstant[contractAddress][funcName];
     if (simulate) {
       contractFunc(...values).call({from: this.state.selectedAccountAddress}, (err, result) => {
-        self.state.result[contractAddress + funcName] = result;
+        self.state.result[contractAddress + funcName] = JSON.stringify(result);
         self.setState({result: self.state.result});
       });
     } else {

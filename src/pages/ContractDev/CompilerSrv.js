@@ -1,8 +1,11 @@
-const compileSrvAddr = "http://sol0511Srv2.xchainunion.com";
+const compileSrvAddr = "http://sol0511Srv.xchainunion.com";
 const chainName = 'ethereum';
-let userFileAddr = compileSrvAddr + "/solidity/";
-let libFileAddr = compileSrvAddr + "/libsList/?" + chainName;
-let sampleFileAddr = compileSrvAddr + "/sampleCodeList/?" + chainName;
+const userFilePath = "/solidity/";
+const libFilePath = "/libsList/?" + chainName;
+const sampleFilePath = "/sampleCodeList/?" + chainName;
+let userFileAddr = compileSrvAddr + userFilePath;
+let libFileAddr = compileSrvAddr + libFilePath;
+let sampleFileAddr = compileSrvAddr + sampleFilePath;
 
 
 const  OpSolType = {
@@ -17,9 +20,9 @@ const  OpSolType = {
 }
 
 export function changeSrv(compileSrv) {
-  userFileAddr = compileSrv + '/solidity/';
-  libFileAddr = compileSrv + '/libsList/';
-  sampleFileAddr = compileSrv + '/sampleCodeList/';
+  userFileAddr = compileSrv + userFilePath;
+  libFileAddr = compileSrv + libFilePath;
+  sampleFileAddr = compileSrv + sampleFilePath;
 }
 
 export async function getLibSolFile() {

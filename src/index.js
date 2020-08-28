@@ -5,7 +5,6 @@ import { ConnectedRouter } from 'react-router-redux';
 import { createHashHistory } from 'history';
 import axios from 'axios';
 import { Feedback } from '@icedesign/base';
-import * as fractal from 'fractal-web3';
 
 // 载入默认全局样式 normalize 、.clearfix 和一些 mixin 方法等
 import '@icedesign/base/reset.scss';
@@ -31,7 +30,6 @@ axios.defaults.baseURL = constant.testNetRPCAddr;
 const nodeInfo = cookie.load('nodeInfo');
 if (nodeInfo != null && nodeInfo !== '') {
   axios.defaults.baseURL = nodeInfo;
-  fractal.utils.setProvider(nodeInfo);
 }
 
 if (!window.localStorage) {

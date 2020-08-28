@@ -251,12 +251,14 @@ export default class ContractManager extends Component {
       resultDetailInfo: '',
       solFileList: ['sample.sol'],
       tabFileList: ['sample.sol'],
+      solVersionList: ['v0.4.20','v0.4.21','v0.4.22','v0.4.23','v0.4.24','v0.4.25','v0.4.26','v0.5.0','v0.5.1','v0.5.10','v0.5.11','v0.5.12','v0.5.13','v0.5.14','v0.5.15','v0.5.16','v0.5.17','v0.5.2','v0.5.3','v0.5.4','v0.5.5','v0.5.6','v0.5.7','v0.5.8','v0.5.9','v0.6.0','v0.6.1','v0.6.10','v0.6.11','v0.6.12','v0.6.2','v0.6.3','v0.6.4','v0.6.5','v0.6.6','v0.6.7','v0.6.8','v0.6.9','v0.7.0'],
       libFileList: [],
       smapleFileList: [],
       fileContractMap: {},
       contractList: [],
       contractAccountAbiMap: {},
       activeKey: '',
+      compilerVersion: '0.5.0',
       compilerVersionSettingVisible: false,
       nodeAddrSettingVisible: false,
       addNewContractFileVisible: false,
@@ -325,6 +327,8 @@ export default class ContractManager extends Component {
     if (fileContractMap != null) {
       this.state.fileContractMap = JSON.parse(fileContractMap);
     }
+
+    this.state.compilerVersion = global.localStorage.getItem('compilerVersion');
 
     let networkInfo = global.localStorage.getItem('networkInfo');
     if (networkInfo != null) {
@@ -639,7 +643,7 @@ export default class ContractManager extends Component {
       return;
     }
     this.addLog("开始编译");
-    const compileResult = await CompilerSrv.compileSol(this.state.selectedAccountAddress, this.state.selectedFileToCompile);
+    const compileResult = await CompilerSrv.compileSol(this.state.selectedAccountAddress, this.state.selectedFileToCompile, this.state.compilerVersion);
     if (compileResult.err != null) {
       Message.error("编译失败");
       this.addLog(compileResult.err);
@@ -1140,6 +1144,8 @@ export default class ContractManager extends Component {
   }
   onChangeCompilerVersion = (v) => {
     this.state.compilerVersion = v;
+    this.setState({compilerVersion: v});
+    global.localStorage.setItem('compilerVersion', this.state.compilerVersion);
   }
   onSetCompilerVersionOK = () => {
     if (utils.isEmptyObj(this.state.compilerVersion)) {
@@ -1381,6 +1387,10 @@ export default class ContractManager extends Component {
 
   render() {
     global.localStorage.setItem("solFileList", this.state.solFileList);
+
+    const docLink = 'https://solidity.readthedocs.io/en/' + this.state.compilerVersion;
+    const compilerDocLink = <a href={docLink} target='_blank'>查看文档</a>
+
     const self = this;
     return (
       <div>
@@ -1498,6 +1508,18 @@ export default class ContractManager extends Component {
                 <Button type="primary" disabled={!this.state.addBtnEnable} onClick={this.addAddress.bind(this)}>{T("添加")}</Button>
               </Row>
               <br/>
+              <Row style={{width: '100%', color: '#fff'}} align='center'>
+                编译器版本:
+                <Select
+                  style={{ width: 160 }}
+                  placeholder={T("请选择编译器版本")}
+                  onChange={this.onChangeCompilerVersion.bind(this)}
+                  value={this.state.compilerVersion}
+                  dataSource={this.state.solVersionList}
+                />
+                {compilerDocLink}
+              </Row>
+              <br/>
               <Row style={{width: '100%'}}>
                 <Select
                   style={{ width: 240 }}
@@ -1510,10 +1532,6 @@ export default class ContractManager extends Component {
                 <Button type="primary" onClick={this.compileContract.bind(this)}>{T("编译")}</Button>
                 {/* &nbsp;&nbsp;&nbsp;
                 <Button type="primary" onClick={this.setCompilerVersion.bind(this)}>{T("配置")}</Button> */}
-              </Row>
-              
-              <Row style={{width: '100%', color: '#fff'}}>
-                {this.state.compilerVersion ? '编译器版本:' + this.state.compilerVersion : ''}
               </Row>
               
               <br/><br/>

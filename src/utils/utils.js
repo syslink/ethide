@@ -4,7 +4,6 @@ import pathToRegexp from 'path-to-regexp';
 import BigNumber from 'bignumber.js';
 import EthCrypto from 'eth-crypto';
 import {AbiCoder as EthersAbiCoder} from 'ethers/utils/abi-coder';
-import * as fractal from 'fractal-web3';
 import * as ethUtil from 'ethereumjs-util';
 import { T } from './lang';
 import * as Constant from './constant';
@@ -306,7 +305,7 @@ function utf8ByteToUnicodeStr(utf8Bytes){
 // 
 function getDataFromFile(fileName, chainId) {
   if (chainId == null) {
-    chainId = fractal.ft.getChainId();
+    chainId = 1;
   }
   const data = global.localStorage.getItem(fileName);
   if (data != null) {
@@ -318,7 +317,7 @@ function getDataFromFile(fileName, chainId) {
 
 function storeDataToFile(fileName, toSaveObj, chainId) {
   if (chainId == null) {
-    chainId = fractal.ft.getChainId();
+    chainId = 1;
   }
   let dataObj = {};
   const data = global.localStorage.getItem(fileName);
@@ -331,7 +330,7 @@ function storeDataToFile(fileName, toSaveObj, chainId) {
 }
 
 function removeDataFromFile(fileName) {
-  const chainId = fractal.ft.getChainId();
+  const chainId = 1;
   let dataObj = {};
   const data = global.localStorage.getItem(fileName);
   if (data != null) {
@@ -370,15 +369,7 @@ function loadKeystoreFromLS() {
 
 async function loadAccountsFromLS() {
   const accountInfos = [];
-  const accounts = getDataFromFile(Constant.AccountFile);
-  if (accounts != null) {
-    for (const account of accounts) {
-      const accountObj = await fractal.account.getAccountByName(account);
-      if (accountObj != null) {
-        accountInfos.push(accountObj);
-      } 
-    }
-  }
+  
   return accountInfos;
 }
 

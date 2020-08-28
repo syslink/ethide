@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import EthCrypto from 'eth-crypto';
 import * as ethUtil from 'ethereumjs-util';
-import * as fractal from 'fractal-web3';
 import * as constant from './constant';
 import * as utils from './utils';
 
@@ -19,7 +18,7 @@ export function setMnemonicPath(mnemonicPath) {
 
 function getDataFromFile(chainProvider) {
   if (chainProvider == null) {
-    chainProvider = fractal.ft.getChainId();
+    chainProvider = 1;
   }
   const data = global.localStorage.getItem(KeyStoreFileName);
   if (data != null) {
@@ -31,7 +30,7 @@ function getDataFromFile(chainProvider) {
 
 function storeDataToFile(toSaveObj, chainProvider) {
   if (chainProvider == null) {
-    chainProvider = fractal.ft.getChainId();
+    chainProvider = 1;
   }
   let dataObj = {};
   const data = global.localStorage.getItem(KeyStoreFileName);

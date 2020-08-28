@@ -16,7 +16,6 @@ import axios from 'axios';
 import { createHashHistory } from 'history';
 import cx from 'classnames';
 import { Link } from 'react-router-dom';
-import * as fractal from 'fractal-web3';
 import { headerMenuConfig } from '../../menuConfig';
 import Logo from '../Logo';
 import * as utils from '../../utils/utils';
@@ -51,9 +50,7 @@ export default class Header extends PureComponent {
     setLang(this.state.defaultLang);
   }
   componentDidMount = () => {
-    fractal.ft.getChainConfig().then(chainConfig => {
-      this.setState({chainId: chainConfig.chainId});
-    })
+    
   }
   openSetDialog = () => {
     this.setState({ nodeConfigVisible: true });
@@ -76,9 +73,6 @@ export default class Header extends PureComponent {
     cookie.save('nodeInfo', nodeInfo, {path: '/', maxAge: 3600 * 24 * 360});
     axios.defaults.baseURL = nodeInfo;
     this.setState({ nodeConfigVisible: false, nodeInfo });
-    fractal.utils.setProvider(nodeInfo);
-    this.state.chainId = fractal.ft.getChainId();
-    //history.push('/');
     location.reload(true);
   }
 

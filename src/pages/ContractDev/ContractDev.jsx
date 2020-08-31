@@ -133,7 +133,7 @@ const DisplayOneTypeFuncs = ({self, contract, abiInfos}) => {
               self.state.funcParaTypes[contractAddress][funcName] = parameterTypes;
               self.state.funcParaNames[contractAddress][funcName] = parameterNames;
               self.state.funcResultOutputs[contractAddress][funcName] = interfaceInfo.outputs;
-              self.state.funcParaConstant[contractAddress][funcName] = interfaceInfo.constant;
+              self.state.funcParaConstant[contractAddress][funcName] = interfaceInfo.constant || interfaceInfo.stateMutability == 'view';
               self.state.funcPayable[contractAddress][funcName] = interfaceInfo.payable;
               return <Panel key={index}  title={funcName}>
                       <OneFunc key={contractAddress + funcName} self={self} 
@@ -158,7 +158,7 @@ const ContractArea = ({ self, contract }) => {
   const writablePayableFuncs = [];
   contract.contractAbi.map((interfaceInfo, index) => {
     if (interfaceInfo.type === 'function') {
-      if (interfaceInfo.constant) {
+      if (interfaceInfo.constant || interfaceInfo.stateMutability == 'view') {
         readonlyFuncs.push(interfaceInfo);
       } else if (interfaceInfo.payable) {
         writablePayableFuncs.push(interfaceInfo);
@@ -266,8 +266,10 @@ export default class ContractManager extends Component {
       contractInfoVisible: false,
       displayAbiVisible: false,
       displayBinVisible: false,
+      importedContractInfoVisible: false,
       curAbi: null,
       curBin: null,
+      importedABIInfo: '',
       loadedContractAddress: '',
       compileSrv: 'http://52.194.255.222:8081',
       selectContactFile: '',
@@ -579,7 +581,7 @@ export default class ContractManager extends Component {
                                 contractAbi);
       return;
     } else {
-      Message.error(T('无此地址的ABI信息，因此无法加载'));
+      this.setState({importedContractInfoVisible: true});
       return;
     }
   }
@@ -1227,7 +1229,7 @@ export default class ContractManager extends Component {
       if (interfaceInfo.type === 'function') {
         const funcName = interfaceInfo.name;
         this.state.result[contractAddress + funcName] = '';
-        if (!interfaceInfo.constant) {
+        if (!interfaceInfo.constant && interfaceInfo.stateMutability != 'view') {
           this.state.result[contractAddress + funcName + 'TxReceipt'] = '';
         }
       }
@@ -1384,6 +1386,35 @@ export default class ContractManager extends Component {
       pwdDialogVisible: false,
     });
   };
+
+  onSetContractInfoOK = () => {
+    if (utils.isEmptyObj(this.state.importedContractName)) {
+      Message.error(T('请输入合约名！'));
+      return;
+    }
+    if (utils.isEmptyObj(this.state.importedABIInfo)) {
+      Message.error(T('请输入合约ABI信息！'));
+      return;
+    }
+    this.storeContractName(this.state.loadedContractAddress, this.state.importedContractName);
+    utils.storeContractABI(this.state.loadedContractAddress, JSON.parse(this.state.importedABIInfo));
+
+    this.displayContractFunc(this.state.loadedContractAddress, this.state.importedContractName, JSON.parse(this.state.importedABIInfo));
+
+    this.onSetContractInfoClose();
+  }
+
+  onSetContractInfoClose = () => {
+    this.setState({importedContractInfoVisible: false});
+  }
+
+  handleImportedContractNameChange = (v) => {
+    this.state.importedContractName = v;
+  }
+
+  importedContractAbi = (v) => {
+    this.setState({importedABIInfo: v});
+  }
 
   render() {
     global.localStorage.setItem("solFileList", this.state.solFileList);
@@ -1697,6 +1728,34 @@ export default class ContractManager extends Component {
           <br/>
           <br/>
           注意:刷新/切换/关闭本页面后，需重新输入密码
+        </Dialog>
+
+
+        <Dialog closeable='close,esc,mask'
+          visible={this.state.importedContractInfoVisible}
+          title={T("请输入合约信息")}
+          closeable="true"
+          footerAlign="center"
+          onOk={this.onSetContractInfoOK.bind(this)}
+          onCancel={this.onSetContractInfoClose.bind(this)}
+          onClose={this.onSetContractInfoClose.bind(this)}
+        >
+          <Input hasClear
+            onChange={this.handleImportedContractNameChange.bind(this)}
+            style={{ width: 350 }}
+            addonTextBefore={T("合约名称")}
+            size="medium"
+          />
+          <br/>
+          <br/>
+          合约ABI:
+          <br/>
+          <Input.TextArea hasClear
+                autoHeight={{ minRows: 20, maxRows: 20 }} 
+                value={this.state.importedABIInfo}
+                size="medium"
+                onChange={this.importedContractAbi.bind(this)}
+              />
         </Dialog>
       </div>
     );

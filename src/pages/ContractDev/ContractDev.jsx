@@ -894,6 +894,11 @@ export default class ContractManager extends Component {
     const simulate = this.state.funcParaConstant[contractAddress][funcName];
     if (simulate) {
       contractFunc(...values).call({from: this.state.selectedAccountAddress}, (err, result) => {
+        if (err != null) {
+          Message.error(err.message);
+          this.addLog(err.message);
+          return;
+        }
         self.state.result[contractAddress + funcName] = JSON.stringify(result);
         self.setState({result: self.state.result});
       });
@@ -1560,7 +1565,7 @@ export default class ContractManager extends Component {
                   dataSource={this.state.solFileList}
                 />
                 &nbsp;&nbsp;&nbsp;
-                <Button type="primary" onClick={this.compileContract.bind(this)}>{T("编译")}</Button>
+                <Button type="primary" onClick={this.compileContract.bind(this)}>编译</Button>
                 {/* &nbsp;&nbsp;&nbsp;
                 <Button type="primary" onClick={this.setCompilerVersion.bind(this)}>{T("配置")}</Button> */}
               </Row>

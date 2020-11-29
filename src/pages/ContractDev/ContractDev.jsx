@@ -304,7 +304,7 @@ export default class ContractManager extends Component {
       this.state.unMateMaskAddresses.push({label: keystore.address, value: keystore.address});
     }
     this.state.addresses = this.state.unMateMaskAddresses;
-    this.state.selectedAccountAddress = this.state.addresses.length > 0 ? this.state.addresses[0].value : '';
+    //this.state.selectedAccountAddress = this.state.addresses.length > 0 ? this.state.addresses[0].value : '';
 
     const solFileList = global.localStorage.getItem('solFileList');
     if (solFileList != null) {
@@ -331,39 +331,24 @@ export default class ContractManager extends Component {
     }
 
     this.state.compilerVersion = global.localStorage.getItem('compilerVersion');
+  }
 
+  componentDidMount = async () => {
     let networkInfo = global.localStorage.getItem('networkInfo');
     if (networkInfo != null) {
       networkInfo = JSON.parse(networkInfo);
       this.state.selectedNetwork = networkInfo.selectedNetwork;
       this.state.networkName = networkInfo.networkName;
-      if (this.state.selectedNetwork == NetworkType.MetaMask) {
-        this.initMetamaskNetwork();
-      }
+      // if (this.state.selectedNetwork == NetworkType.MetaMask) {
+      //   this.initMetamaskNetwork();
+      // }
+      await this.onChangeNetwork(this.state.selectedNetwork);
     }
-
-    // fetch('https://solc-bin.ethereum.org/bin/list.json', {})
-    //   .then(resp => {
-    //           resp.json().then(response => {
-    //             const compilerVersion = global.localStorage.getItem('compilerVersion');
-    //             this.state.compilerVersion = compilerVersion ? compilerVersion : response.latestRelease;
-
-    //             response.builds.map(buildInfo => {
-    //               this.state.allCompilerVersionList = [buildInfo.longVersion, ...this.state.allCompilerVersionList];
-    //               if (buildInfo.longVersion.indexOf('nightly') < 0) {
-    //                 this.state.commitCompilerVersionList = [buildInfo.longVersion, ...this.state.commitCompilerVersionList];
-    //                 this.state.compilerVersionList = [buildInfo.longVersion, ...this.state.compilerVersionList];
-    //               }
-    //             });
-    //           });
-    //         });
           
     if (!window.ethereum && !window.web3) { //用来判断你是否安装了metamask
       this.state.networks = this.state.networksWithoutMetaMask;
     }
-  }
 
-  componentDidMount = async () => {
     hyperchain.utils.setProvider(this.state.compileSrv);      
     this.syncSolFileToSrv();  
 
@@ -463,7 +448,15 @@ export default class ContractManager extends Component {
         web3Provider = 'https://mainnet.infura.io/v3/e878131f944440759914c7423b17740c';
         web3Provider = '';
         break;
+      case NetworkType.LocalNode:  // local node
+        web3Provider = 'http://127.0.0.1:8545';
+        networkName = web3Provider;
+        break;
+      case NetworkType.OtherNode:  // other node
+        this.setState({nodeAddrSettingVisible: true});
+        return;
       case NetworkType.MetaMask:  // 选择metamask，需要导入metamask当前连接的网络和地址列表，当MetaMask切换网络时，也需要同步更新
+      default:
         var web3 = this.state.web3;
         if (window.ethereum) {
           try {
@@ -480,13 +473,6 @@ export default class ContractManager extends Component {
         }      
         addBtnEnable = false;
         break;
-      case NetworkType.LocalNode:  // local node
-        web3Provider = 'http://127.0.0.1:8545';
-        networkName = web3Provider;
-        break;
-      case NetworkType.OtherNode:  // other node
-        this.setState({nodeAddrSettingVisible: true});
-        return;
     }
     
     if (web3Provider != null && (web3 == null || this.state.currentProvider != web3Provider)) {
@@ -504,11 +490,22 @@ export default class ContractManager extends Component {
       else if (id === '42') networkName = 'Kovan测试网';
     }
 
-    web3.eth.getAccounts((error, accounts) => {
-      if (!error) {
-        this.setState({addresses: accounts});
+    const accounts = await web3.eth.getAccounts();
+    this.setState({addresses: accounts});
+
+    let lastSelectedAddr = global.localStorage.getItem('selectedAddress');
+    if (lastSelectedAddr == null) {
+      this.state.selectedAccountAddress = accounts[0];
+      global.localStorage.setItem('selectedAddress', accounts[0]);
+    } else {
+      const index = accounts.indexOf(lastSelectedAddr);
+      if (index > -1) {
+        this.state.selectedAccountAddress = accounts[index];
+      } else {
+        this.state.selectedAccountAddress = accounts[0];
+        global.localStorage.setItem('selectedAddress', accounts[0]);
       }
-    });
+    }
     const networkInfoObj = {selectedNetwork: network, networkName};
     global.localStorage.setItem('networkInfo', JSON.stringify(networkInfoObj));
     this.setState({addBtnEnable, currentProvider: web3Provider, networkName, selectedNetwork: network});
@@ -517,6 +514,7 @@ export default class ContractManager extends Component {
   onChangeAddress = (accountAddress, item) => {
     this.state.selectedAccountAddress = accountAddress;
     this.setState({ selectedAccountAddress: accountAddress });
+    global.localStorage.setItem('selectedAddress', accountAddress);
     this.syncSolFileToSrv();
     if (this.state.web3) {
       this.state.web3.eth.getBalance(accountAddress).then(result => {
@@ -527,7 +525,6 @@ export default class ContractManager extends Component {
     }
   }
 
-  
   changeLog = (v) => {
     this.state.resultInfo = v;
     this.setState({resultInfo: this.state.resultInfo});
@@ -806,7 +803,7 @@ export default class ContractManager extends Component {
       myContract.deploy({
         data: contractBin,
         arguments: values
-      }).send({ from: this.state.selectedAccountAddress }, 
+      }).send({ from: this.state.selectedAccountAddress, gas: 10000000, gasPrice: 20000000000 }, 
               function(error, transactionHash) {})
               .on('error', function(error){ 
                 if (error) {
@@ -823,7 +820,7 @@ export default class ContractManager extends Component {
                 }, 1000);
               })
               .on('receipt', function(receipt) {
-                clearTimeout(waitTxLogId);
+                clearInterval(waitTxLogId);
                 self.addRawLog('\n\n');
                 self.addLog('交易receipt:' + JSON.stringify(receipt)); 
                 self.addLog('交易receipt表明合约部署' + (receipt.status ? '成功' : '失败')); 
@@ -899,7 +896,13 @@ export default class ContractManager extends Component {
           this.addLog(err.message);
           return;
         }
-        self.state.result[contractAddress + funcName] = JSON.stringify(result);
+        if (typeof result == 'object') {
+          this.addLog(JSON.stringify(result));
+          self.state.result[contractAddress + funcName] = JSON.stringify(result);
+        } else {
+          this.addLog(result);
+          self.state.result[contractAddress + funcName] = JSON.stringify({result});
+        }
         self.setState({result: self.state.result});
       });
     } else {
@@ -921,7 +924,7 @@ export default class ContractManager extends Component {
         }, 1000);
       })
       .on('receipt', function(receipt) {
-        clearTimeout(waitTxLogId);
+        clearInterval(waitTxLogId);
         self.addRawLog('\n\n');
         self.addLog('交易receipt:' + JSON.stringify(receipt));
       })
@@ -1535,7 +1538,7 @@ export default class ContractManager extends Component {
                   style={{ width: 170 }}
                   placeholder={T("选择发起合约操作的账户")}
                   onChange={this.onChangeAddress.bind(this)}
-                  defaultValue={this.state.addresses.length > 0 ? this.state.addresses[0] : ''}
+                  value={this.state.selectedAccountAddress}
                   dataSource={this.state.addresses}
                 />
                 &nbsp;&nbsp;&nbsp;
